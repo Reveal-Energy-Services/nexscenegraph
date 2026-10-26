@@ -1,0 +1,82 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  FEED_URL: https://pkgs.dev.azure.com/reveal-energy/_packaging/ImageFracAppFeed/nuget/v3/index.json
+  FEED_ID: f73b2420-43f7-48b0-991b-bd2b7694138b
+  # ImageFrac4 is the release view Orchid restores from; pushed packages are invisible there until promoted.
+  PROMOTE_VIEW_ID: 0abf9565-1070-4d46-a092-c788ef36f3c4
+  PACKAGE_IDS: Reveal.Veldrid.SceneGraph Reveal.Veldrid.SceneGraph.Manipulators Reveal.Veldrid.SceneGraph.Wpf
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Nerdbank.GitVersioning needs history to compute the version height
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          dotnet-version: 6.0.x # test projects target net6.0
+
+      - run: dotnet restore src/NexSceneGraph.sln
+      - run: dotnet build src/NexSceneGraph.sln -c Release --no-restore
+      - run: dotnet test src/NexSceneGraph.sln -c Release --no-build
+
+      - name: Pack
+        run: |
+          dotnet pack src/Veldrid.SceneGraph/Veldrid.SceneGraph.csproj -c Release --no-build -o artifacts
+          dotnet pack src/Veldrid.SceneGraph.Manipulators/Veldrid.SceneGraph.Manipulators.csproj -c Release --no-build -o artifacts
+          dotnet pack src/Veldrid.SceneGraph.Wpf/Veldrid.SceneGraph.Wpf.csproj -c Release --no-build -o artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    concurrency: publish
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nupkgs
+          path: artifacts
+
+      - name: Push to ImageFracAppFeed
+        env:
+          AZDO_FEED_PAT: ${{ secrets.AZDO_FEED_PAT }}
+        run: |
+          dotnet nuget add source $env:FEED_URL --name ImageFracAppFeed --username az --password $env:AZDO_FEED_PAT --store-password-in-clear-text
+          dotnet nuget push "artifacts/*.nupkg" --source ImageFracAppFeed --api-key az --skip-duplicate
+
+      - name: Promote to ImageFrac4 view
+        env:
+          AZDO_FEED_PAT: ${{ secrets.AZDO_FEED_PAT }}
+        run: |
+          $packages = foreach ($id in $env:PACKAGE_IDS -split ' ') {
+            $pattern = '^' + [regex]::Escape($id) + '\.(\d.*)\.nupkg$'
+            $file = Get-ChildItem artifacts -Filter *.nupkg | Where-Object { $_.Name -match $pattern } | Select-Object -First 1
+            if (-not $file) { throw "No nupkg found for $id" }
+            $null = $file.Name -match $pattern
+            @{ id = $id; version = $Matches[1] }
+          }
+          $body = @{ data = @{ viewId = $env:PROMOTE_VIEW_ID }; operation = 0; packages = @($packages) } | ConvertTo-Json -Depth 5
+          $auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$env:AZDO_FEED_PAT"))
+          Invoke-RestMethod -Method Post `
+            -Uri "https://pkgs.dev.azure.com/reveal-energy/_apis/packaging/feeds/$env:FEED_ID/nuget/packagesbatch?api-version=7.1-preview.1" `
+            -Headers @{ Authorization = "Basic $auth" } -ContentType 'application/json' -Body $body
+          $packages | ForEach-Object { "Promoted $($_.id) $($_.version)" }

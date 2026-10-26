@@ -6,8 +6,7 @@
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <PropertyGroup>
-    <VersionPrefix>0.4.7</VersionPrefix>
-    <VersionSuffix>alpha</VersionSuffix>
+    <PackageId>Reveal.Veldrid.SceneGraph</PackageId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

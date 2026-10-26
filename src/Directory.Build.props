@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <Authors>Sean Spicer;Reveal Energy Services</Authors>
+    <Description>NexSceneGraph: a scene graph built on Veldrid. Reveal Energy Services fork.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Reveal-Energy-Services/nexscenegraph</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Reveal-Energy-Services/nexscenegraph</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.10.94" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

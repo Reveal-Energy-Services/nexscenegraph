@@ -1,5 +1,30 @@
 # NexSceneGraph
 
+## Reveal Energy Services fork
+
+This is Reveal Energy Services' fork of [seanspicer/nexscenegraph](https://github.com/seanspicer/nexscenegraph), used by
+Orchid. `main` started from upstream `v4.9` (the source of `Veldrid.SceneGraph*` 0.4.9-alpha0694 on nuget.org).
+
+**Packages:** `Reveal.Veldrid.SceneGraph`, `Reveal.Veldrid.SceneGraph.Manipulators`, `Reveal.Veldrid.SceneGraph.Wpf`.
+Only the package IDs differ from upstream; assembly names and namespaces are unchanged.
+
+**Versioning:** [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning) via `version.json`. Builds of
+`main` are `0.5.0-alpha.{height}`; PR builds get a `-g<commit>` suffix. To release a stable version, drop `-alpha.{height}`
+from `version.json` on `main`.
+
+**CI/publish** (`.github/workflows/build.yml`): every PR and push builds, tests and packs; the nupkgs are attached to the
+run as the `nupkgs` artifact. Pushes to `main` also push to the `ImageFracAppFeed` Azure Artifacts feed and promote the
+packages to its `ImageFrac4` view (the view Orchid restores from). Publishing uses the repo secret `AZDO_FEED_PAT`, an
+Azure DevOps PAT with *Packaging: Read, write & manage* on the `reveal-energy` org. PATs expire: when publishing fails
+with 401, rotate it.
+
+**Consuming in Orchid:** bump the three `Reveal.Veldrid.SceneGraph*` versions in `Orchid/Directory.Packages.props`.
+
+**Testing an unpublished build in Orchid:** `dotnet pack` the three projects with `-c Release -o <folder>` (or download a
+PR run's `nupkgs` artifact), then temporarily add `<folder>` to `Orchid/NuGet.Config` as a package source with a
+`packageSourceMapping` entry for the pattern `Reveal.Veldrid.*`, and set the versions in `Directory.Packages.props`.
+Don't commit the NuGet.Config change.
+
 ##### October 2019
 
 NexSceneGraph is approaching a first set of milestone releases.   Currently we are working on the core API and exposing higher-level concepts so that developers new to 3D programming don't necessarily have to start by learning vertex layouts, shaders, pipelines, pipeline states, etc.   The current 0.2.x API makes it simple to create a shape such as a box, and apply PhongLighting (against per-face normals)

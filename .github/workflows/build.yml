@@ -61,7 +61,10 @@ jobs:
           AZDO_FEED_PAT: ${{ secrets.AZDO_FEED_PAT }}
         run: |
           dotnet nuget add source $env:FEED_URL --name ImageFracAppFeed --username az --password $env:AZDO_FEED_PAT --store-password-in-clear-text
-          dotnet nuget push "artifacts/*.nupkg" --source ImageFracAppFeed --api-key az --skip-duplicate
+          foreach ($pkg in Get-ChildItem artifacts -Filter *.nupkg) {
+            dotnet nuget push $pkg.FullName --source ImageFracAppFeed --api-key az --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw "Push failed: $($pkg.Name)" }
+          }
 
       - name: Promote to ImageFrac4 view
         env:

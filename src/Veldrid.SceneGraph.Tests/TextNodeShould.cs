@@ -41,6 +41,22 @@ namespace Veldrid.SceneGraph.Tests
             Assert.That(InkPixels(outlined), Is.GreaterThan(InkPixels(plain)));
         }
 
+        [TestCase("2144000", HorizontalAlignment.Center)]
+        [TestCase("-2000", HorizontalAlignment.Left)]
+        [TestCase("Well A-1H", HorizontalAlignment.Right)]
+        public void NotClipGlyphsWithoutPadding(string text, HorizontalAlignment alignment)
+        {
+            var texture = Texture(TextNode.Create(text, new TextFont("Arial", 17, Bold: true), White, Transparent,
+                VerticalAlignment.Center, alignment, padding: 0, fontResolution: 2));
+            int w = (int) texture.Width, h = (int) texture.Height;
+            byte Alpha(int x, int y) => texture.TextureData[(y * w + x) * 4 + 3];
+
+            var touchesBorder = Enumerable.Range(0, w).Any(x => Alpha(x, 0) > 0 || Alpha(x, h - 1) > 0)
+                                || Enumerable.Range(0, h).Any(y => Alpha(0, y) > 0 || Alpha(w - 1, y) > 0);
+
+            Assert.That(touchesBorder, Is.False);
+        }
+
         [Test]
         public void FallBackWhenFamilyIsMissing()
         {

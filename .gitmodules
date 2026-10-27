@@ -1,3 +1,4 @@
 [submodule "modules/veldrid"]
 	path = modules/veldrid
-	url = https://github.com/seanspicer/veldrid.git
+	url = https://github.com/Reveal-Energy-Services/veldrid.git
+	branch = main

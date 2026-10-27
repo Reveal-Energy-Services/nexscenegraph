@@ -17,6 +17,7 @@ env:
   PACKAGE_IDS: >-
     Reveal.Veldrid.SceneGraph Reveal.Veldrid.SceneGraph.Manipulators Reveal.Veldrid.SceneGraph.Wpf
     Reveal.Veldrid Reveal.Veldrid.SPIRV Reveal.Veldrid.Utilities Reveal.Veldrid.SDL2 Reveal.Veldrid.StartupUtilities
+    Reveal.Veldrid.MetalBindings Reveal.Veldrid.OpenGLBindings
 
 jobs:
   build:
@@ -37,7 +38,7 @@ jobs:
 
       - name: Pack
         run: |
-          # Veldrid projects don't use NBGV, so every package (NSG + Veldrid) is packed with the NSG version.
+          # Veldrid projects don't use NBGV, so every package (3 NSG + 7 Veldrid) is packed with the NSG version.
           dotnet tool install --global nbgv --version 3.10.94
           $version = nbgv get-version -v NuGetPackageVersion
           $projects = @(
@@ -45,6 +46,8 @@ jobs:
             'src/Veldrid.SceneGraph.Manipulators/Veldrid.SceneGraph.Manipulators.csproj'
             'src/Veldrid.SceneGraph.Wpf/Veldrid.SceneGraph.Wpf.csproj'
             'modules/veldrid/src/Veldrid/Veldrid.csproj'
+            'modules/veldrid/src/Veldrid.MetalBindings/Veldrid.MetalBindings.csproj'
+            'modules/veldrid/src/Veldrid.OpenGLBindings/Veldrid.OpenGLBindings.csproj'
             'modules/veldrid/src/Veldrid.SDL2/Veldrid.SDL2.csproj'
             'modules/veldrid/src/Veldrid.Utilities/Veldrid.Utilities.csproj'
             'modules/veldrid/src/Veldrid.StartupUtilities/Veldrid.StartupUtilities.csproj'

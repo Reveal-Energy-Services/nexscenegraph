@@ -14,7 +14,10 @@ env:
   FEED_ID: f73b2420-43f7-48b0-991b-bd2b7694138b
   # ImageFrac4 is the release view Orchid restores from; pushed packages are invisible there until promoted.
   PROMOTE_VIEW_ID: 0abf9565-1070-4d46-a092-c788ef36f3c4
-  PACKAGE_IDS: Reveal.Veldrid.SceneGraph Reveal.Veldrid.SceneGraph.Manipulators Reveal.Veldrid.SceneGraph.Wpf
+  PACKAGE_IDS: >-
+    Reveal.Veldrid.SceneGraph Reveal.Veldrid.SceneGraph.Manipulators Reveal.Veldrid.SceneGraph.Wpf
+    Reveal.Veldrid Reveal.Veldrid.SPIRV Reveal.Veldrid.Utilities Reveal.Veldrid.SDL2 Reveal.Veldrid.StartupUtilities
+    Reveal.Veldrid.MetalBindings Reveal.Veldrid.OpenGLBindings
 
 jobs:
   build:
@@ -23,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Nerdbank.GitVersioning needs history to compute the version height
+          submodules: recursive # Veldrid (and its veldrid-spirv) build from source
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -34,9 +38,25 @@ jobs:
 
       - name: Pack
         run: |
-          dotnet pack src/Veldrid.SceneGraph/Veldrid.SceneGraph.csproj -c Release --no-build -o artifacts
-          dotnet pack src/Veldrid.SceneGraph.Manipulators/Veldrid.SceneGraph.Manipulators.csproj -c Release --no-build -o artifacts
-          dotnet pack src/Veldrid.SceneGraph.Wpf/Veldrid.SceneGraph.Wpf.csproj -c Release --no-build -o artifacts
+          # Veldrid projects don't use NBGV, so every package (3 NSG + 7 Veldrid) is packed with the NSG version.
+          dotnet tool install --global nbgv --version 3.10.94
+          $version = nbgv get-version -v NuGetPackageVersion
+          $projects = @(
+            'src/Veldrid.SceneGraph/Veldrid.SceneGraph.csproj'
+            'src/Veldrid.SceneGraph.Manipulators/Veldrid.SceneGraph.Manipulators.csproj'
+            'src/Veldrid.SceneGraph.Wpf/Veldrid.SceneGraph.Wpf.csproj'
+            'modules/veldrid/src/Veldrid/Veldrid.csproj'
+            'modules/veldrid/src/Veldrid.MetalBindings/Veldrid.MetalBindings.csproj'
+            'modules/veldrid/src/Veldrid.OpenGLBindings/Veldrid.OpenGLBindings.csproj'
+            'modules/veldrid/src/Veldrid.SDL2/Veldrid.SDL2.csproj'
+            'modules/veldrid/src/Veldrid.Utilities/Veldrid.Utilities.csproj'
+            'modules/veldrid/src/Veldrid.StartupUtilities/Veldrid.StartupUtilities.csproj'
+            'modules/veldrid/modules/veldrid-spirv/src/Veldrid.SPIRV/Veldrid.SPIRV.csproj'
+          )
+          foreach ($p in $projects) {
+            dotnet pack $p -c Release --no-build -o artifacts -p:PackageVersion=$version
+            if ($LASTEXITCODE -ne 0) { throw "Pack failed: $p" }
+          }
 
       - uses: actions/upload-artifact@v4
         with:

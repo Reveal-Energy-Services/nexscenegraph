@@ -58,8 +58,8 @@ namespace Examples.Common
             // Right Justified, Screen coordinate scaled Text 
             {
                 var rightJustifiedXForm = MatrixTransform.Create(Matrix4x4.CreateTranslation(0f, -60f, 0f));
-                var rightJustifiedText = TextNode.Create(text, new TextFont("Arial", 20), new RgbaByte(0, 0, 0, 255), new RgbaByte(0, 128, 0, 255),
-                    VerticalAlignment.Bottom, HorizontalAlignment.Right, 4, 3);
+                var rightJustifiedText = TextNode.Create(text, new TextFont("Arial", 50), new RgbaByte(0, 0, 0, 255), new RgbaByte(0, 128, 0, 255),
+                    VerticalAlignment.Center, HorizontalAlignment.Center, 4, 3);
                 rightJustifiedText.AutoRotateToScreen = true;
                 rightJustifiedText.CharacterSizeMode = CharacterSizeModes.ScreenCoords;
                 var rightJustifiedGeode = Geode.Create();

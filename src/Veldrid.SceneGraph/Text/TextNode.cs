@@ -457,9 +457,9 @@ namespace Veldrid.SceneGraph.Text
             _charAspectRatio = _charWidth / _charHeight;
 
             //var texSize = (int)NextPowerOfTwo((uint)  System.Math.Round(rawSize));
-            _textWidth = (int) (size.Width + padding * 2); //(int)NextPowerOfTwo((uint)  System.Math.Round(size.Width));
-            _textHeight =
-                (int) (size.Height + padding * 2); //(int)NextPowerOfTwo((uint)  System.Math.Round(size.Height));
+            // Round up so the last (antialiased) column/row of the glyphs is not cut off.
+            _textWidth = (int) System.Math.Ceiling(size.Width + padding * 2);
+            _textHeight = (int) System.Math.Ceiling(size.Height + padding * 2);
 
             _textAspectRatio = _textWidth / (double) _textHeight;
         }
@@ -484,13 +484,20 @@ namespace Veldrid.SceneGraph.Text
             };
         }
 
-        // Advance width x line height (ascent + descent + leading) of Text at the given pixel size.
+        // Antialiasing can put partial coverage up to a pixel outside the glyph outlines.
+        private const float AntialiasMargin = 1f;
+
+        // Width: the larger of the advance and the ink width, plus an antialiasing margin on each side.
+        // Height: line height (ascent + descent + leading).
         private (float Width, float Height) MeasureText(float pixelSize)
         {
             using var typeface = CreateTypeface();
             using var paint = CreatePaint(typeface, pixelSize);
             var metrics = paint.FontMetrics;
-            return (paint.MeasureText(Text ?? string.Empty), metrics.Descent - metrics.Ascent + metrics.Leading);
+            var inkBounds = new SKRect();
+            var advance = paint.MeasureText(Text ?? string.Empty, ref inkBounds);
+            var width = System.Math.Max(advance, inkBounds.Width) + 2 * AntialiasMargin;
+            return (width, metrics.Descent - metrics.Ascent + metrics.Leading);
         }
 
         private ProcessedTexture BuildTexture()
@@ -517,11 +524,11 @@ namespace Veldrid.SceneGraph.Text
                 switch (HorizontalAlignment)
                 {
                     case HorizontalAlignment.Left:
-                        x = padding;
+                        x = padding + AntialiasMargin;
                         paint.TextAlign = SKTextAlign.Left;
                         break;
                     case HorizontalAlignment.Right:
-                        x = width - padding;
+                        x = width - padding - AntialiasMargin;
                         paint.TextAlign = SKTextAlign.Right;
                         break;
                     case HorizontalAlignment.Center:

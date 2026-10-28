@@ -312,6 +312,25 @@ namespace Veldrid.SceneGraph.RenderGraph
             return set;
         }
 
+        /// <summary>
+        /// Disposes and forgets the shaders cached for <paramref name="gd"/>. Call before disposing the device.
+        /// </summary>
+        public static void ReleaseDevice(GraphicsDevice gd)
+        {
+            var keys = new List<ShaderSetCacheKey>();
+            foreach (var key in s_shaderSets.Keys)
+                if (key.Device == gd)
+                    keys.Add(key);
+
+            foreach (var key in keys)
+            {
+                var (vs, fs) = s_shaderSets[key];
+                vs.Dispose();
+                fs.Dispose();
+                s_shaderSets.Remove(key);
+            }
+        }
+
         private static CrossCompileOptions GetOptions(GraphicsDevice gd, Framebuffer framebuffer)
         {
             var specializations = GetSpecializations(gd, framebuffer);

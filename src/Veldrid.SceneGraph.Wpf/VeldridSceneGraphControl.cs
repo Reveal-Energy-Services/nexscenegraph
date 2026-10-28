@@ -95,6 +95,15 @@ namespace Veldrid.SceneGraph.Wpf
             _vsgRenderer.DpiScale = GetDpiScale();
         }
 
+        protected override void ReleaseUnmanagedResources()
+        {
+            // Dispose() runs on the UI thread; the finalizer does not, and must not touch the devices.
+            if (Dispatcher.CheckAccess())
+                _vsgRenderer?.Dispose();
+
+            base.ReleaseUnmanagedResources();
+        }
+
         protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
         {
             base.OnRenderSizeChanged(sizeInfo);

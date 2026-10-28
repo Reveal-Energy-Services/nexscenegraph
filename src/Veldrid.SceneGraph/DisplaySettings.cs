@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Veldrid.SceneGraph
@@ -39,8 +40,9 @@ namespace Veldrid.SceneGraph
     /// </summary>
     public class DisplaySettings : IDisplaySettings
     {
-        private static readonly Dictionary<IView, DisplaySettings> _displaySettingsCache =
-            new Dictionary<IView, DisplaySettings>();
+        // Weak keys: an entry lives only as long as its view.
+        private static readonly ConditionalWeakTable<IView, DisplaySettings> _displaySettingsCache =
+            new ConditionalWeakTable<IView, DisplaySettings>();
 
         private DisplaySettings()
         {
@@ -76,11 +78,7 @@ namespace Veldrid.SceneGraph
         {
             if (null == view) throw new ArgumentNullException("view cannot be null");
 
-            if (_displaySettingsCache.TryGetValue(view, out var displaySettings)) return displaySettings;
-
-            displaySettings = new DisplaySettings();
-            _displaySettingsCache.Add(view, displaySettings);
-            return displaySettings;
+            return _displaySettingsCache.GetValue(view, _ => new DisplaySettings());
         }
 
         private void ReadEnvironmentVariables()

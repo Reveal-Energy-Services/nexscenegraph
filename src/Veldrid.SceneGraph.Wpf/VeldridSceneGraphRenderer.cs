@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Reactive.Subjects;
+using System.Runtime.InteropServices;
+using Veldrid.SceneGraph.RenderGraph;
 using Veldrid.SceneGraph.InputAdapter;
 using Veldrid.SceneGraph.Util;
 using Veldrid.SceneGraph.Viewer;
@@ -9,7 +11,7 @@ using Veldrid.Utilities;
 
 namespace Veldrid.SceneGraph.Wpf
 {
-    public class VeldridSceneGraphRenderer : BaseRenderer
+    public class VeldridSceneGraphRenderer : BaseRenderer, IDisposable
     {
 
         private ISubject<IEndFrameEvent> _endFrameEvents;
@@ -122,8 +124,13 @@ namespace Veldrid.SceneGraph.Wpf
         private Framebuffer _offscreenFB;
         
         private Texture _offscreenColor;
-        
+
+        // Our own COM reference to _offscreenColor's native texture, the copy source for the shared render target.
+        private Vortice.Direct3D11.ID3D11Resource _offscreenColorResource;
+
         private Texture _offscreenDepth;
+
+        private bool _disposed;
 
         private Fence _fence;
         
@@ -156,8 +163,7 @@ namespace Veldrid.SceneGraph.Wpf
             
             if (_graphicsDevice.GetD3D11Info(out var backendInfo))
             {
-                var d3d11Device = new SharpDX.Direct3D11.Device(backendInfo.Device);
-                this.Renderer = new Element.D3D11(d3d11Device);
+                this.Renderer = new Element.D3D11(backendInfo.Device);
             }
             
             _factory = new DisposeCollectorResourceFactory(_graphicsDevice.ResourceFactory);
@@ -189,8 +195,40 @@ namespace Veldrid.SceneGraph.Wpf
             
             _graphicsDevice.WaitForIdle();
             _factory.DisposeCollector.DisposeAll();
-            
-            // TODO - probably should dispose the graphics device here, need to figure out how to do it cleanly.
+        }
+
+        /// <summary>
+        /// Releases the graphics device and everything created on it. Rendering and input are no-ops afterwards.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            var element = Renderer;
+            if (element != null)
+            {
+                Renderer = null; // Detach(): completes the event subjects and disposes the factory's resources
+                element.Dispose();
+            }
+            else
+            {
+                _graphicsDevice.WaitForIdle();
+                _factory.DisposeCollector.DisposeAll();
+            }
+
+            _offscreenColorResource?.Dispose();
+            _offscreenColorResource = null;
+
+            GraphicsDeviceOperations = null;
+            GraphicsDeviceResize = null;
+
+            RenderGroupState.ReleaseDevice(_graphicsDevice);
+            _commandList.Dispose();
+            _graphicsDevice.Dispose();
+            _graphicsDevice = null;
+
+            _frameInfoSubject.OnCompleted();
         }
 
         public void Initialize(uint width, uint height)
@@ -284,6 +322,15 @@ namespace Veldrid.SceneGraph.Wpf
                 TextureUsage.RenderTarget);
 
             _offscreenColor = _factory.CreateTexture(mainColorDesc);
+
+            _offscreenColorResource?.Dispose();
+            _offscreenColorResource = null;
+            if (_graphicsDevice.GetD3D11Info(out var backendInfo))
+            {
+                var texturePointer = backendInfo.GetTexturePointer(_offscreenColor);
+                Marshal.AddRef(texturePointer);
+                _offscreenColorResource = new Vortice.Direct3D11.ID3D11Resource(texturePointer);
+            }
             
             _offscreenDepth = _factory.CreateTexture(TextureDescription.Texture2D(
                 width, 
@@ -359,16 +406,15 @@ namespace Veldrid.SceneGraph.Wpf
 
         public override void RenderCore(DrawEventArgs args)
         {
+            if (_disposed) return;
+
             if (null != _view && null != _view.SceneContext && null != _view.SceneContext.OutputFramebuffer)
             {
                 Frame();
 
-                if (!_graphicsDevice.GetD3D11Info(out var backendInfo)) return;
-
                 // Copy Render Target
-                var d3d11RenderTarget =
-                    new SharpDX.Direct3D11.Texture2D(backendInfo.GetTexturePointer(_offscreenColor));
-                d3d11RenderTarget?.Device.ImmediateContext.CopyResource(d3d11RenderTarget, Renderer.RenderTarget);
+                if (_offscreenColorResource != null)
+                    Renderer.CopyToRenderTarget(_offscreenColorResource);
             }
         }
 

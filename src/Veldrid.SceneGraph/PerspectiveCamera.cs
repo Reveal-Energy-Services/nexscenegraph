@@ -17,17 +17,19 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Veldrid.SceneGraph.Util;
 
 namespace Veldrid.SceneGraph
 {
     public static class PerspectiveCameraOperations
     {
-        private static readonly Dictionary<ICamera, Tuple<float, float>> NearFarPlaneCache;
+        // Weak keys: an entry lives only as long as its camera.
+        private static readonly ConditionalWeakTable<ICamera, Tuple<float, float>> NearFarPlaneCache;
 
         static PerspectiveCameraOperations()
         {
-            NearFarPlaneCache = new Dictionary<ICamera, Tuple<float, float>>();
+            NearFarPlaneCache = new ConditionalWeakTable<ICamera, Tuple<float, float>>();
         }
 
         public static void GuardPerspective(ICamera camera)
@@ -49,14 +51,7 @@ namespace Veldrid.SceneGraph
             GuardPerspective(camera);
             camera.SetProjectionMatrix(Matrix4x4.CreatePerspectiveFieldOfView(vfov, aspectRatio, zNear, zFar));
 
-            if (NearFarPlaneCache.ContainsKey(camera))
-            {
-                NearFarPlaneCache[camera] = Tuple.Create(zNear, zFar);
-            }
-            else
-            {
-                NearFarPlaneCache.Add(camera, Tuple.Create(zNear, zFar));
-            }
+            NearFarPlaneCache.AddOrUpdate(camera, Tuple.Create(zNear, zFar));
         }
 
         public static bool GetProjectionMatrixAsFrustum(ICamera camera, ref float left, ref float right, ref float bottom, ref float top,
@@ -103,9 +98,9 @@ namespace Veldrid.SceneGraph
             
             float zNear = 0.0f;
             float zFar = 100.0f;
-            if (NearFarPlaneCache.ContainsKey(camera))
+            if (NearFarPlaneCache.TryGetValue(camera, out var nearFar))
             {
-                (zNear, zFar) = NearFarPlaneCache[camera];
+                (zNear, zFar) = nearFar;
             }
             
             // TODO -- THIS NEEDS TO BE MOVED, it shouldn't be necessary.

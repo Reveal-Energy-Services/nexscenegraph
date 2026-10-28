@@ -155,6 +155,11 @@ namespace Veldrid.SceneGraph.Viewer
             _fullScreenQuadRenderer.CreateDeviceObjects(device, SceneContext);
         }
 
+        public void DestroyDeviceObjects()
+        {
+            _fullScreenQuadRenderer.DestroyDeviceObjects();
+        }
+
         private void Initialize(GraphicsDevice device, ResourceFactory factory)
         {
             var alignment = device.UniformBufferMinOffsetAlignment;

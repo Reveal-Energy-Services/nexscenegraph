@@ -1,131 +1,45 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using SharpDX.Direct3D9;
+using Vortice.Direct3D9;
 
 namespace Veldrid.SceneGraph.Wpf.Element
 {
-    public class D3D9 : D3D
+    /// <summary>
+    /// The D3D9Ex device that WPF's D3DImage needs to open D3D11 shared render targets.
+    /// </summary>
+    internal sealed class D3D9 : IDisposable
     {
-        /// <summary>
-        /// 
-        /// </summary>
         public D3D9()
-            : this(null)
         {
+            m_context = Vortice.Direct3D9.D3D9.Direct3DCreate9Ex();
+
+            var presentparams = new PresentParameters
+            {
+                Windowed = true,
+                SwapEffect = SwapEffect.Discard,
+                DeviceWindowHandle = GetDesktopWindow(),
+                PresentationInterval = PresentInterval.Default
+            };
+
+            m_device = m_context.CreateDeviceEx(0, DeviceType.Hardware, IntPtr.Zero,
+                CreateFlags.HardwareVertexProcessing | CreateFlags.Multithreaded | CreateFlags.FpuPreserve,
+                presentparams);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="device"></param>
-        public D3D9(DeviceEx device) 
+        public void Dispose()
         {
-            if (device != null)
-            {
-                //context = ???
-                throw new NotSupportedException("dunno how to get the context");
-
-                //this.device = device;
-                //device.AddReference();
-            }
-            else
-            {
-                m_context = new Direct3DEx();
-
-                PresentParameters presentparams = new PresentParameters();
-                presentparams.Windowed = true;
-                presentparams.SwapEffect = SwapEffect.Discard;
-                presentparams.DeviceWindowHandle = GetDesktopWindow();
-                presentparams.PresentationInterval = PresentInterval.Default;
-                this.m_device = new DeviceEx(m_context, 0, DeviceType.Hardware, IntPtr.Zero, CreateFlags.HardwareVertexProcessing | CreateFlags.Multithreaded | CreateFlags.FpuPreserve, presentparams);
-            }
+            m_device?.Dispose();
+            m_device = null;
+            m_context?.Dispose();
+            m_context = null;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="disposing"></param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                Set(ref m_device, null);
-                Set(ref m_context, null);
-            }
-        }
+        public IDirect3DDevice9Ex Device => m_device ?? throw new ObjectDisposedException(nameof(D3D9));
 
-        /// <summary>
-        /// 
-        /// </summary>
-        public bool IsDisposed { get { return m_device == null; } }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
         [DllImport("user32.dll", SetLastError = false)]
         static extern IntPtr GetDesktopWindow();
 
-        /// <summary>
-        /// 
-        /// </summary>
-        public DeviceEx Device { get { return m_device.GetOrThrow(); } }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="w"></param>
-        /// <param name="h"></param>
-        public override void Reset(int w, int h)
-        {
-            m_device.GetOrThrow();
-
-            if (w < 1)
-                throw new ArgumentOutOfRangeException("w");
-            if (h < 1)
-                throw new ArgumentOutOfRangeException("h");
-
-            Set(ref m_renderTarget, new SharpDX.Direct3D9.Texture(this.m_device, w, h, 1, Usage.RenderTarget, Format.A8R8G8B8, Pool.Default));
-
-            // TODO test that...
-            using (var surface = m_renderTarget.GetSurfaceLevel(0))
-                m_device.SetRenderTarget(0, surface);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="property"></param>
-        /// <returns></returns>
-        protected T Prepared<T>(ref T property)
-        {
-            m_device.GetOrThrow();
-            if (property == null)
-                Reset(1, 1);
-            return property;
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public SharpDX.Direct3D9.Texture RenderTarget { get { return Prepared(ref m_renderTarget); } }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="dximage"></param>
-        public override void SetBackBuffer(DXImageSource dximage) { dximage.SetBackBuffer(RenderTarget); }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        public override System.Windows.Media.Imaging.WriteableBitmap ToImage() { throw new NotImplementedException(); }
-
-
-        protected Direct3DEx m_context;
-        protected DeviceEx m_device;
-        private SharpDX.Direct3D9.Texture m_renderTarget;
+        private IDirect3D9Ex m_context;
+        private IDirect3DDevice9Ex m_device;
     }
 }

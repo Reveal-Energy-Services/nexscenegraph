@@ -23,5 +23,10 @@ namespace Veldrid.SceneGraph
         void HandleResize(GraphicsDevice device);
 
         void CaptureNextFrame();
+
+        /// <summary>
+        /// Disposes device objects not created through the factory passed to HandleOperation.
+        /// </summary>
+        void DestroyDeviceObjects();
     }
 }

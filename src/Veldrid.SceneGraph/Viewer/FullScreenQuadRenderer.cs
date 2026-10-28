@@ -15,6 +15,12 @@ namespace Veldrid.SceneGraph.Viewer
         private Pipeline _pipeline;
         private DeviceBuffer _vb;
 
+        public void DestroyDeviceObjects()
+        {
+            _factory?.DisposeCollector.DisposeAll();
+            _factory = null;
+        }
+
         public void CreateDeviceObjects(GraphicsDevice gd, SceneContext sc)
         {
             if (null != _factory) _factory.DisposeCollector.DisposeAll();

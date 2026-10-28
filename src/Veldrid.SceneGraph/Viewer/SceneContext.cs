@@ -40,6 +40,15 @@ namespace Veldrid.SceneGraph.Viewer
                 new ResourceLayoutElementDescription("SourceSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
         }
 
+        /// <summary>
+        /// Disposes the window-sized resources created by RecreateWindowSizedResources.
+        /// </summary>
+        public void DestroyDeviceObjects()
+        {
+            _factory?.DisposeCollector.DisposeAll();
+            _factory = null;
+        }
+
         public void SetOutputFramebufffer(Framebuffer outputFramebuffer)
         {
             OutputFramebuffer = outputFramebuffer;

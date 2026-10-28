@@ -220,11 +220,16 @@ namespace Veldrid.SceneGraph.Wpf
             _offscreenColorResource?.Dispose();
             _offscreenColorResource = null;
 
+            // These keep their own factories; every D3D11 resource holds a reference to its device.
+            _sceneContext?.DestroyDeviceObjects();
+            _view?.Camera.Renderer?.DestroyDeviceObjects();
+
             GraphicsDeviceOperations = null;
             GraphicsDeviceResize = null;
 
             RenderGroupState.ReleaseDevice(_graphicsDevice);
             _commandList.Dispose();
+
             _graphicsDevice.Dispose();
             _graphicsDevice = null;
 

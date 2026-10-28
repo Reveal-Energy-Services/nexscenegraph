@@ -35,8 +35,18 @@ namespace Veldrid.SceneGraph.Wpf.Element
 			if (disposing)
 			{
 				// Let go of D3DImage's reference to the surface before releasing the texture.
-				if (m_backBuffer != null)
-					SetBackBuffer((IDirect3DTexture9)null);
+				// D3DImage is thread-affine; DXElement's finalizer also gets here, so off the
+				// UI thread just release the texture.
+				if (CheckAccess())
+				{
+					if (m_backBuffer != null)
+						SetBackBuffer((IDirect3DTexture9)null);
+				}
+				else
+				{
+					m_backBuffer?.Dispose();
+					m_backBuffer = null;
+				}
 				GC.SuppressFinalize(this);
 			}
 

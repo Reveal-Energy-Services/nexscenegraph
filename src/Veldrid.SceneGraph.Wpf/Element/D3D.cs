@@ -2,7 +2,6 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
-using SharpDX;
 
 namespace Veldrid.SceneGraph.Wpf.Element
 {
@@ -45,7 +44,7 @@ namespace Veldrid.SceneGraph.Wpf.Element
         /// <summary>
         /// Size set with call to <see cref="Reset(DrawEventArgs)"/>
         /// </summary>
-        public Vector2 RenderSize { get; protected set; }
+        public System.Numerics.Vector2 RenderSize { get; protected set; }
 
         /// <summary>
         /// 
@@ -58,7 +57,7 @@ namespace Veldrid.SceneGraph.Wpf.Element
             if (w < 1 || h < 1)
                 return;
 
-            RenderSize = new Vector2(w, h);
+            RenderSize = new System.Numerics.Vector2(w, h);
 //            if (Camera != null)
 //                Camera.AspectRatio = (float)(args.RenderSize.Width / args.RenderSize.Height);
 
@@ -90,9 +89,7 @@ namespace Veldrid.SceneGraph.Wpf.Element
         public event EventHandler<DrawEventArgs> Resetted;
 
         /// <summary>
-        /// SharpDX 1.3 requires explicit dispose of all its ComObject.
-        /// This method makes it easy.
-        /// (Remark: I attempted to hack a correct Dispose implementation but it crashed the app on first GC!)
+        /// Disposes the current value of <paramref name="field"/> and replaces it.
         /// </summary>
         public static void Set<T>(ref T field, T newValue)
             where T : IDisposable
@@ -105,12 +102,6 @@ namespace Veldrid.SceneGraph.Wpf.Element
         #endregion
         
         #region Rendering Methods
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        public abstract System.Windows.Media.Imaging.WriteableBitmap ToImage();
 
         /// <summary>
         /// 

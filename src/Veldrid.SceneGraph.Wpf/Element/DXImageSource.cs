@@ -1,28 +1,30 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Interop;
-using SharpDX.Direct3D9;
+using Vortice.Direct3D11;
+using Vortice.Direct3D9;
 
 namespace Veldrid.SceneGraph.Wpf.Element
 {
 	public class DXImageSource : D3DImage, IDisposable
 	{
         /// <summary>
-        /// 
+        ///
         /// </summary>
 		public DXImageSource()
 		{
 			StartD3D9();
 		}
+
 		~DXImageSource() { Dispose(false); }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
 		public void Dispose() { Dispose(true); }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="disposing"></param>
 		protected void Dispose(bool disposing)
@@ -32,23 +34,23 @@ namespace Veldrid.SceneGraph.Wpf.Element
 
 			if (disposing)
 			{
-				// This is thread-safe, because SharpDX dispose actually 
-				// decrements the reference count on a COM object, which 
-				// is then deleted.
-				m_backBuffer?.Dispose();
+				// Let go of D3DImage's reference to the surface before releasing the texture.
+				if (m_backBuffer != null)
+					SetBackBuffer((IDirect3DTexture9)null);
 				GC.SuppressFinalize(this);
 			}
+
 			EndD3D9();
 			m_isDisposed = true;
 		}
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
 		public bool IsDisposed { get { return m_isDisposed; } }
-	
+
         /// <summary>
-        /// 
+        ///
         /// </summary>
 		public void Invalidate()
 		{
@@ -62,36 +64,30 @@ namespace Veldrid.SceneGraph.Wpf.Element
 				Unlock();
 			}
 		}
-        
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="texture"></param>
-		public void SetBackBuffer(SharpDX.Direct3D11.Texture2D texture) { SetBackBuffer(s_d3d9.Device.GetSharedD3D9(texture)); }
 
         /// <summary>
-        /// 
+        /// Displays a D3D11 texture created with ResourceOptionFlags.Shared.
         /// </summary>
         /// <param name="texture"></param>
-		public void SetBackBuffer(SharpDX.Direct3D9.Texture texture)
+		public void SetBackBuffer(ID3D11Texture2D texture) { SetBackBuffer(s_d3d9.Device.GetSharedD3D9(texture)); }
+
+        /// <summary>
+        /// Displays <paramref name="texture"/>, taking ownership of it; the previous back buffer is released.
+        /// </summary>
+        /// <param name="texture"></param>
+		private void SetBackBuffer(IDirect3DTexture9 texture)
 		{
 			if (IsDisposed)
 				throw new ObjectDisposedException(GetType().Name);
 
-			SharpDX.Direct3D9.Texture toDelete = null;
+			var toDelete = m_backBuffer != texture ? m_backBuffer : null;
+			m_backBuffer = texture;
+
 			try
 			{
-				if (texture != m_backBuffer)
-				{
-					// if it's from the private (SDX9ImageSource) D3D9 device, dispose of it
-					if (m_backBuffer != null && m_backBuffer.Device.NativePointer == s_d3d9.Device.NativePointer)
-						toDelete = m_backBuffer;
-					m_backBuffer = texture;
-				}
-
 				if (texture != null)
 				{
-					using (Surface surface = texture.GetSurfaceLevel(0))
+					using (var surface = texture.GetSurfaceLevel(0))
 					{
 						Lock();
 						SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface.NativePointer, true);
@@ -101,23 +97,20 @@ namespace Veldrid.SceneGraph.Wpf.Element
 				}
 				else
 				{
+					// No dirty rect: D3DImage throws on AddDirtyRect without a back buffer.
 					Lock();
 					SetBackBuffer(D3DResourceType.IDirect3DSurface9, IntPtr.Zero, true);
-					AddDirtyRect(new Int32Rect(0, 0, base.PixelWidth, base.PixelHeight));
 					Unlock();
 				}
 			}
-			finally 
+			finally
 			{
-				if (toDelete != null)
-				{
-					toDelete.Dispose();
-				}
+				toDelete?.Dispose();
 			}
 		}
-    
+
         /// <summary>
-        /// 
+        ///
         /// </summary>
 		private static void StartD3D9()
 		{
@@ -127,22 +120,22 @@ namespace Veldrid.SceneGraph.Wpf.Element
 		}
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
 		private static void EndD3D9()
 		{
 			s_activeClients--;
 			if (s_activeClients == 0)
+			{
 				s_d3d9.Dispose();
+				s_d3d9 = null;
+			}
 		}
-
 
 		private static int s_activeClients;
 		private static D3D9 s_d3d9;
 
-
         private bool m_isDisposed;
-        private SharpDX.Direct3D9.Texture m_backBuffer;
-		
+        private IDirect3DTexture9 m_backBuffer;
 	}
 }

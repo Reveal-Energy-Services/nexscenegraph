@@ -1,4 +1,4 @@
-//
+﻿//
 // Copyright 2018-2021 Sean Spicer 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,6 @@
 //
 
 using Examples.Common.Wpf;
-using SharpDX.Win32;
 using Veldrid;
 using Veldrid.SceneGraph.InputAdapter;
 

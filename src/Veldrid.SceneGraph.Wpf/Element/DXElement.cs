@@ -230,7 +230,7 @@ namespace Veldrid.SceneGraph.Wpf.Element
         /// </summary>
         private void UpdateSize()
         {
-            if (Renderer == null)
+            if (Renderer == null || Surface == null)
                 return;
             Renderer.Reset(GetDrawEventArgs());
         }
@@ -244,7 +244,7 @@ namespace Veldrid.SceneGraph.Wpf.Element
         /// </summary>
         public void Render()
         {
-            if (Renderer == null || IsInDesignMode)
+            if (Renderer == null || Surface == null || IsInDesignMode)
                 return;
 
             Renderer.Render(GetDrawEventArgs());

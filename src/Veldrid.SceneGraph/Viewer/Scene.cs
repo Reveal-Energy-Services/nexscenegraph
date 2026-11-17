@@ -15,7 +15,7 @@
 //
 
 using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Veldrid.SceneGraph.Viewer
 {
@@ -23,7 +23,7 @@ namespace Veldrid.SceneGraph.Viewer
     {
         private static readonly Lazy<SceneSingleton> Lazy = new Lazy<SceneSingleton>(() => new SceneSingleton());
 
-        private readonly List<Scene> _sceneCache = new List<Scene>();
+        private readonly ConditionalWeakTable<INode, Scene> _sceneCache = new ConditionalWeakTable<INode, Scene>();
 
         private SceneSingleton()
         {
@@ -31,23 +31,23 @@ namespace Veldrid.SceneGraph.Viewer
 
         public static SceneSingleton Instance => Lazy.Value;
 
-        // TODO use timed lock here
         public void Add(Scene scene)
         {
-            _sceneCache.Add(scene);
+            if (null != scene.SceneData)
+                _sceneCache.TryAdd(scene.SceneData, scene);
         }
 
         public void Remove(Scene scene)
         {
-            _sceneCache.Remove(scene);
+            if (null != scene.SceneData
+                && _sceneCache.TryGetValue(scene.SceneData, out var cached)
+                && ReferenceEquals(cached, scene))
+                _sceneCache.Remove(scene.SceneData);
         }
 
         public Scene GetScene(INode node)
         {
-            foreach (var scene in _sceneCache)
-                if (null != scene && scene.SceneData == node)
-                    return scene;
-            return null;
+            return null != node && _sceneCache.TryGetValue(node, out var scene) ? scene : null;
         }
     }
 
@@ -55,7 +55,6 @@ namespace Veldrid.SceneGraph.Viewer
     {
         internal Scene()
         {
-            SceneSingleton.Instance.Add(this);
         }
 
         public INode SceneData { get; private set; }
@@ -80,7 +79,11 @@ namespace Veldrid.SceneGraph.Viewer
 
         public void SetSceneData(INode node)
         {
+            if (ReferenceEquals(SceneData, node)) return;
+
+            SceneSingleton.Instance.Remove(this);
             SceneData = node;
+            SceneSingleton.Instance.Add(this);
         }
     }
 }
